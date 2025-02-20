@@ -74,7 +74,7 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
           row.map((cell, j) => (
             <div
               key={`${i}-${j}`}
-              className={`w-6 h-6 flex items-center justify-center ${
+              className={`w-6 h-6 flex items-center justify-center border border-gray-300 ${
                 cell ? (
                   block.type === "normal"
                     ? block.color
@@ -117,7 +117,7 @@ function DroppableCell({
   return (
     <div
       ref={drop}
-      className={`w-8 h-8 flex items-center justify-center ${
+      className={`w-8 h-8 flex items-center justify-center border border-gray-200 dark:border-gray-700 ${
         type ? (
           type === "normal"
             ? color
@@ -125,7 +125,7 @@ function DroppableCell({
               ? "bg-yellow-400"
               : "bg-blue-600"
         ) : 'bg-gray-100 dark:bg-gray-800'
-      } ${isOver ? 'opacity-50' : ''} border border-gray-200 dark:border-gray-700`}
+      } ${isOver ? 'opacity-50' : ''}`}
     >
       {type && (type !== "normal" ? (type === "gold" ? "✨" : "💎") : "")}
     </div>
@@ -176,10 +176,12 @@ export default function BlockBlast() {
     return { shape: randomShape, type, color };
   };
 
-  // Genera 3 nuovi blocchi
+  // Genera 3 nuovi blocchi solo se non ce ne sono disponibili
   const generateNewBlocks = () => {
-    const newBlocks = Array(3).fill(null).map(() => generateBlock());
-    setGameState(prev => ({ ...prev, availableBlocks: newBlocks }));
+    if (gameState.availableBlocks.length === 0) {
+      const newBlocks = Array(3).fill(null).map(() => generateBlock());
+      setGameState(prev => ({ ...prev, availableBlocks: newBlocks }));
+    }
   };
 
   // Verifica se un blocco può essere posizionato in una data posizione
@@ -235,7 +237,9 @@ export default function BlockBlast() {
     }
 
     // Verifica game over
-    checkGameOver(newBlocks);
+    if (newBlocks.length > 0) {
+      checkGameOver(newBlocks);
+    }
   };
 
   // Verifica e rimuove le linee complete
@@ -302,8 +306,6 @@ export default function BlockBlast() {
 
   // Verifica se il gioco è finito
   const checkGameOver = (blocks: Block[]) => {
-    if (blocks.length === 0) return; // Non verificare se stiamo per generare nuovi blocchi
-
     const canPlaceAnyBlock = blocks.some(block => {
       for (let i = 0; i < GRID_SIZE; i++) {
         for (let j = 0; j < GRID_SIZE; j++) {
