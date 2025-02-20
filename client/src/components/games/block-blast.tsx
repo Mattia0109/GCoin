@@ -7,25 +7,23 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 
-// Definizione delle forme dei blocchi
 type BlockShape = boolean[][];
 type BlockType = "normal" | "gold" | "gamecoin";
 
 interface Block {
   shape: BlockShape;
   type: BlockType;
-  color?: string; // Colore per i blocchi normali
+  color?: string;
 }
 
 interface GameState {
   grid: (BlockType | null)[][];
-  gridColors: (string | null)[][]; // Colori della griglia
+  gridColors: (string | null)[][];
   availableBlocks: Block[];
   score: number;
   gameOver: boolean;
 }
 
-// Definizione delle forme possibili dei blocchi
 const BLOCK_SHAPES: BlockShape[] = [
   [[true]], // 1x1
   [[true, true]], // 1x2
@@ -37,7 +35,6 @@ const BLOCK_SHAPES: BlockShape[] = [
   [[true, false], [true, true]], // reversed L
 ];
 
-// Colori per i blocchi normali
 const BLOCK_COLORS = [
   "bg-blue-500",
   "bg-green-500",
@@ -61,11 +58,11 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
   return (
     <div
       ref={drag}
-      className={`p-1 border rounded ${isDragging ? 'opacity-50' : ''}`}
+      className={`p-2 border-2 rounded border-gray-300 ${isDragging ? 'opacity-50' : ''}`}
       style={{ cursor: 'move' }}
     >
       <div
-        className="grid grid-flow-row"
+        className="grid gap-[1px] bg-gray-300"
         style={{
           gridTemplateColumns: `repeat(${block.shape[0].length}, 1fr)`,
         }}
@@ -74,7 +71,7 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
           row.map((cell, j) => (
             <div
               key={`${i}-${j}`}
-              className={`w-6 h-6 flex items-center justify-center border border-gray-300 ${
+              className={`w-6 h-6 flex items-center justify-center ${
                 cell ? (
                   block.type === "normal"
                     ? block.color
@@ -117,7 +114,7 @@ function DroppableCell({
   return (
     <div
       ref={drop}
-      className={`w-8 h-8 flex items-center justify-center border border-gray-200 dark:border-gray-700 ${
+      className={`w-8 h-8 flex items-center justify-center border border-gray-300 ${
         type ? (
           type === "normal"
             ? color
@@ -160,7 +157,6 @@ export default function BlockBlast() {
     },
   });
 
-  // Genera un nuovo blocco con tipo e colore casuali
   const generateBlock = (): Block => {
     const randomShape = BLOCK_SHAPES[Math.floor(Math.random() * BLOCK_SHAPES.length)];
     const type: BlockType = Math.random() > 0.95
@@ -176,7 +172,6 @@ export default function BlockBlast() {
     return { shape: randomShape, type, color };
   };
 
-  // Genera 3 nuovi blocchi solo se non ce ne sono disponibili
   const generateNewBlocks = () => {
     if (gameState.availableBlocks.length === 0) {
       const newBlocks = Array(3).fill(null).map(() => generateBlock());
@@ -184,7 +179,6 @@ export default function BlockBlast() {
     }
   };
 
-  // Verifica se un blocco può essere posizionato in una data posizione
   const canPlaceBlock = (block: Block, row: number, col: number): boolean => {
     for (let i = 0; i < block.shape.length; i++) {
       for (let j = 0; j < block.shape[i].length; j++) {
@@ -200,13 +194,14 @@ export default function BlockBlast() {
     return true;
   };
 
-  // Gestisce il drop di un blocco
   const handleDrop = (item: { block: Block; index: number }, row: number, col: number) => {
     if (gameState.gameOver) return;
     if (!canPlaceBlock(item.block, row, col)) return;
 
+    // Crea copie profonde delle griglie e dei blocchi disponibili
     const newGrid = gameState.grid.map(row => [...row]);
     const newGridColors = gameState.gridColors.map(row => [...row]);
+    const newBlocks = [...gameState.availableBlocks];
 
     // Posiziona il blocco
     for (let i = 0; i < item.block.shape.length; i++) {
@@ -219,9 +214,9 @@ export default function BlockBlast() {
     }
 
     // Rimuovi il blocco usato
-    const newBlocks = [...gameState.availableBlocks];
     newBlocks.splice(item.index, 1);
 
+    // Aggiorna lo stato
     setGameState(prev => ({
       ...prev,
       grid: newGrid,
@@ -229,6 +224,7 @@ export default function BlockBlast() {
       availableBlocks: newBlocks,
     }));
 
+    // Controlla le linee complete
     checkLines(newGrid, newGridColors);
 
     // Se non ci sono più blocchi disponibili, genera nuovi blocchi
@@ -236,13 +232,12 @@ export default function BlockBlast() {
       generateNewBlocks();
     }
 
-    // Verifica game over
+    // Verifica game over solo se ci sono ancora blocchi
     if (newBlocks.length > 0) {
       checkGameOver(newBlocks);
     }
   };
 
-  // Verifica e rimuove le linee complete
   const checkLines = (grid: (BlockType | null)[][], gridColors: (string | null)[][]) => {
     let creditsEarned = 0;
     let gamecoinsEarned = 0;
@@ -304,7 +299,6 @@ export default function BlockBlast() {
     }
   };
 
-  // Verifica se il gioco è finito
   const checkGameOver = (blocks: Block[]) => {
     const canPlaceAnyBlock = blocks.some(block => {
       for (let i = 0; i < GRID_SIZE; i++) {
@@ -324,7 +318,6 @@ export default function BlockBlast() {
     }
   };
 
-  // Inizializza il gioco
   const initGame = () => {
     setGameState({
       grid: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)),
@@ -362,7 +355,7 @@ export default function BlockBlast() {
 
         {/* Griglia di gioco */}
         <Card className="p-4">
-          <div className="grid grid-cols-10">
+          <div className="grid grid-cols-10 gap-[1px] bg-gray-300">
             {gameState.grid.map((row, i) =>
               row.map((cell, j) => (
                 <DroppableCell
