@@ -198,46 +198,41 @@ export default function BlockBlast() {
     if (gameState.gameOver) return;
     if (!canPlaceBlock(item.block, row, col)) return;
 
-    // Crea una copia profonda dell'intero stato del gioco
-    const newState = {
-      grid: gameState.grid.map(row => [...row]),
-      gridColors: gameState.gridColors.map(row => [...row]),
-      availableBlocks: [...gameState.availableBlocks],
-      score: gameState.score,
-      gameOver: gameState.gameOver
-    };
+    // Crea una copia profonda del grid e gridColors
+    const newGrid = JSON.parse(JSON.stringify(gameState.grid));
+    const newGridColors = JSON.parse(JSON.stringify(gameState.gridColors));
 
     // Posiziona il blocco sulla griglia
     for (let i = 0; i < item.block.shape.length; i++) {
       for (let j = 0; j < item.block.shape[i].length; j++) {
         if (item.block.shape[i][j]) {
-          newState.grid[row + i][col + j] = item.block.type;
-          newState.gridColors[row + i][col + j] = item.block.color || null;
+          newGrid[row + i][col + j] = item.block.type;
+          newGridColors[row + i][col + j] = item.block.color || null;
         }
       }
     }
 
-    // Rimuovi SOLO il blocco utilizzato dall'array dei blocchi disponibili
-    newState.availableBlocks = newState.availableBlocks.filter((_, idx) => idx !== item.index);
+    // Rimuovi SOLO il blocco utilizzato
+    const newBlocks = gameState.availableBlocks.filter((_, idx) => idx !== item.index);
 
-    // Aggiorna lo stato con tutte le modifiche in una sola volta
-    setGameState(newState);
+    // Aggiorna lo stato in una sola operazione
+    setGameState(prev => ({
+      ...prev,
+      grid: newGrid,
+      gridColors: newGridColors,
+      availableBlocks: newBlocks,
+    }));
 
-    // Controlla le linee complete
-    checkLines(newState.grid, newState.gridColors);
+    // Controlla le linee complete usando le nuove griglie
+    checkLines(newGrid, newGridColors);
 
     // Genera nuovi blocchi SOLO se non ce ne sono più disponibili
-    if (newState.availableBlocks.length === 0) {
-      const newBlocks = Array(3).fill(null).map(() => generateBlock());
+    if (newBlocks.length === 0) {
+      const brandNewBlocks = Array(3).fill(null).map(() => generateBlock());
       setGameState(prev => ({
         ...prev,
-        availableBlocks: newBlocks
+        availableBlocks: brandNewBlocks
       }));
-    }
-
-    // Verifica game over solo se ci sono ancora blocchi e nessuna linea è stata completata
-    if (newState.availableBlocks.length > 0) {
-      checkGameOver(newState.availableBlocks);
     }
   };
 
