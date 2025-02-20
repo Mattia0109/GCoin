@@ -125,7 +125,7 @@ function DroppableCell({
               ? "bg-yellow-400"
               : "bg-blue-600"
         ) : 'bg-gray-100 dark:bg-gray-800'
-      } ${isOver ? 'opacity-50' : ''}`}
+      } ${isOver ? 'opacity-50' : ''} border border-gray-200 dark:border-gray-700`}
     >
       {type && (type !== "normal" ? (type === "gold" ? "✨" : "💎") : "")}
     </div>
@@ -190,7 +190,7 @@ export default function BlockBlast() {
           const newRow = row + i;
           const newCol = col + j;
 
-          if (newRow >= GRID_SIZE || newCol >= GRID_SIZE) return false;
+          if (newRow >= GRID_SIZE || newCol >= GRID_SIZE || newRow < 0 || newCol < 0) return false;
           if (gameState.grid[newRow][newCol] !== null) return false;
         }
       }
@@ -295,6 +295,8 @@ export default function BlockBlast() {
 
   // Verifica se il gioco è finito
   const checkGameOver = (blocks: Block[]) => {
+    if (blocks.length === 0) return; // Non verificare se stiamo per generare nuovi blocchi
+
     const canPlaceAnyBlock = blocks.some(block => {
       for (let i = 0; i < GRID_SIZE; i++) {
         for (let j = 0; j < GRID_SIZE; j++) {
