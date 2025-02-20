@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import WalletDisplay from "@/components/wallet/wallet-display";
-import MemoryGame from "@/components/game/memory-game";
+import BlockBlast from "@/components/games/block-blast";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function GamePage() {
@@ -12,7 +12,7 @@ export default function GamePage() {
       <header className="bg-background border-b p-4">
         <div className="container mx-auto flex justify-between items-center">
           <Link href="/">
-            <Button variant="ghost">← Back to Map</Button>
+            <Button variant="ghost">← Torna alla Mappa</Button>
           </Link>
           <div className="flex items-center gap-4">
             <WalletDisplay />
@@ -29,11 +29,12 @@ export default function GamePage() {
 
       <main className="flex-1 container mx-auto p-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Memory Game</h1>
+          <h1 className="text-3xl font-bold mb-6">Block Blast</h1>
           <p className="text-muted-foreground mb-8">
-            Match pairs of cards to earn credits. Complete the game to earn bonus GameCoins!
+            Posiziona i blocchi sulla griglia per formare linee complete. 
+            I blocchi ✨ ti daranno crediti extra, mentre i blocchi 💎 ti faranno guadagnare GameCoin!
           </p>
-          <MemoryGame />
+          <BlockBlast />
         </div>
       </main>
     </div>
