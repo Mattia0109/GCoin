@@ -198,43 +198,46 @@ export default function BlockBlast() {
     if (gameState.gameOver) return;
     if (!canPlaceBlock(item.block, row, col)) return;
 
-    // Crea copie profonde delle griglie e dei blocchi disponibili
-    const newGrid = gameState.grid.map(row => [...row]);
-    const newGridColors = gameState.gridColors.map(row => [...row]);
-    const newBlocks = [...gameState.availableBlocks];
+    // Crea una copia profonda dell'intero stato del gioco
+    const newState = {
+      grid: gameState.grid.map(row => [...row]),
+      gridColors: gameState.gridColors.map(row => [...row]),
+      availableBlocks: [...gameState.availableBlocks],
+      score: gameState.score,
+      gameOver: gameState.gameOver
+    };
 
-    // Posiziona il blocco
+    // Posiziona il blocco sulla griglia
     for (let i = 0; i < item.block.shape.length; i++) {
       for (let j = 0; j < item.block.shape[i].length; j++) {
         if (item.block.shape[i][j]) {
-          newGrid[row + i][col + j] = item.block.type;
-          newGridColors[row + i][col + j] = item.block.color || null;
+          newState.grid[row + i][col + j] = item.block.type;
+          newState.gridColors[row + i][col + j] = item.block.color || null;
         }
       }
     }
 
-    // Rimuovi il blocco usato
-    newBlocks.splice(item.index, 1);
+    // Rimuovi SOLO il blocco utilizzato dall'array dei blocchi disponibili
+    newState.availableBlocks = newState.availableBlocks.filter((_, idx) => idx !== item.index);
 
-    // Aggiorna lo stato
-    setGameState(prev => ({
-      ...prev,
-      grid: newGrid,
-      gridColors: newGridColors,
-      availableBlocks: newBlocks,
-    }));
+    // Aggiorna lo stato con tutte le modifiche in una sola volta
+    setGameState(newState);
 
     // Controlla le linee complete
-    checkLines(newGrid, newGridColors);
+    checkLines(newState.grid, newState.gridColors);
 
-    // Se non ci sono più blocchi disponibili, genera nuovi blocchi
-    if (newBlocks.length === 0) {
-      generateNewBlocks();
+    // Genera nuovi blocchi SOLO se non ce ne sono più disponibili
+    if (newState.availableBlocks.length === 0) {
+      const newBlocks = Array(3).fill(null).map(() => generateBlock());
+      setGameState(prev => ({
+        ...prev,
+        availableBlocks: newBlocks
+      }));
     }
 
-    // Verifica game over solo se ci sono ancora blocchi
-    if (newBlocks.length > 0) {
-      checkGameOver(newBlocks);
+    // Verifica game over solo se ci sono ancora blocchi e nessuna linea è stata completata
+    if (newState.availableBlocks.length > 0) {
+      checkGameOver(newState.availableBlocks);
     }
   };
 
@@ -346,16 +349,21 @@ export default function BlockBlast() {
           <Button onClick={initGame}>Nuova Partita</Button>
         </div>
 
-        {/* Blocchi disponibili */}
-        <div className="flex gap-4 mb-4">
+        {/* Blocchi disponibili con una griglia più evidente */}
+        <div className="flex gap-4 mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
           {gameState.availableBlocks.map((block, index) => (
             <DraggableBlock key={index} block={block} index={index} />
           ))}
+          {gameState.availableBlocks.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Generazione nuovi blocchi...
+            </p>
+          )}
         </div>
 
-        {/* Griglia di gioco */}
+        {/* Griglia di gioco con bordi più evidenti */}
         <Card className="p-4">
-          <div className="grid grid-cols-10 gap-[1px] bg-gray-300">
+          <div className="grid grid-cols-10 gap-[2px] bg-gray-300 p-[2px] rounded">
             {gameState.grid.map((row, i) =>
               row.map((cell, j) => (
                 <DroppableCell

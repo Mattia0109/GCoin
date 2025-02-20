@@ -87,8 +87,8 @@ export class MemStorage implements IStorage {
       const numCollectibles = Math.min(30, Math.max(5, Math.floor(city.population / 50000)));
 
       for (let i = 0; i < numCollectibles; i++) {
-        // Genera coordinate casuali intorno alla città (raggio di circa 5km)
-        const radius = 0.05; // approssimativamente 5km
+        // Genera coordinate casuali in un'area più ampia intorno alla città (raggio di circa 10km)
+        const radius = 0.1; // approssimativamente 10km
         const randomLat = city.lat + (Math.random() - 0.5) * radius;
         const randomLng = city.lng + (Math.random() - 0.5) * radius;
 

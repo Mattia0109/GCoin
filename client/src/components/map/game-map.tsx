@@ -76,16 +76,18 @@ export default function GameMap() {
       collectible.longitude
     );
 
-    if (distance <= 0.1) {
-      // Within 100 meters
+    if (distance <= 0.01) { // Cambiato da 0.1 (100m) a 0.01 (10m)
+      // Within 10 meters
       collectMutation.mutate({
         credits: collectible.type === "credit" ? collectible.amount : 0,
         gamecoins: collectible.type === "gamecoin" ? collectible.amount : 0,
       });
     } else {
+      // Aggiungiamo la distanza al messaggio per aiutare l'utente
+      const distanceInMeters = Math.round(distance * 1000);
       toast({
-        title: "Too Far",
-        description: "You need to be closer to collect this reward!",
+        title: "Troppo Lontano",
+        description: `Devi essere più vicino per raccogliere questa ricompensa! (Distanza attuale: ${distanceInMeters}m)`,
         variant: "destructive",
       });
     }
@@ -107,7 +109,7 @@ export default function GameMap() {
       attributionControl={false}
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      
+
       <Marker position={userLocation} icon={defaultIcon}>
         <Popup>You are here</Popup>
       </Marker>
