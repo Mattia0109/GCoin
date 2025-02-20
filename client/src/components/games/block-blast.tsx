@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { motion } from "framer-motion";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 // Definizione delle forme dei blocchi
 type BlockShape = boolean[][];
@@ -13,10 +14,12 @@ type BlockType = "normal" | "gold" | "gamecoin";
 interface Block {
   shape: BlockShape;
   type: BlockType;
+  color?: string; // Colore per i blocchi normali
 }
 
 interface GameState {
   grid: (BlockType | null)[][];
+  gridColors: (string | null)[][]; // Colori della griglia
   availableBlocks: Block[];
   score: number;
   gameOver: boolean;
@@ -34,11 +37,105 @@ const BLOCK_SHAPES: BlockShape[] = [
   [[true, false], [true, true]], // reversed L
 ];
 
+// Colori per i blocchi normali
+const BLOCK_COLORS = [
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-purple-500",
+  "bg-red-500",
+  "bg-orange-500",
+  "bg-pink-500",
+];
+
 const GRID_SIZE = 10;
+
+function DraggableBlock({ block, index }: { block: Block; index: number }) {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: "block",
+    item: { block, index },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
+
+  return (
+    <div
+      ref={drag}
+      className={`p-1 border rounded ${isDragging ? 'opacity-50' : ''}`}
+      style={{ cursor: 'move' }}
+    >
+      <div 
+        className="grid grid-flow-row" 
+        style={{ 
+          gridTemplateColumns: `repeat(${block.shape[0].length}, 1fr)`,
+        }}
+      >
+        {block.shape.map((row, i) => (
+          row.map((cell, j) => (
+            <div
+              key={`${i}-${j}`}
+              className={`w-6 h-6 flex items-center justify-center ${
+                cell ? (
+                  block.type === "normal" 
+                    ? block.color 
+                    : block.type === "gold"
+                      ? "bg-yellow-400"
+                      : "bg-blue-600"
+                ) : 'invisible'
+              }`}
+            >
+              {cell && (block.type !== "normal" ? (block.type === "gold" ? "✨" : "💎") : "")}
+            </div>
+          ))
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DroppableCell({ 
+  onDrop, 
+  row, 
+  col, 
+  type, 
+  color
+}: { 
+  onDrop: (item: any, row: number, col: number) => void;
+  row: number;
+  col: number;
+  type: BlockType | null;
+  color: string | null;
+}) {
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: "block",
+    drop: (item: any) => onDrop(item, row, col),
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  }));
+
+  return (
+    <div
+      ref={drop}
+      className={`w-8 h-8 flex items-center justify-center ${
+        type ? (
+          type === "normal" 
+            ? color 
+            : type === "gold"
+              ? "bg-yellow-400"
+              : "bg-blue-600"
+        ) : 'bg-gray-100 dark:bg-gray-800'
+      } ${isOver ? 'opacity-50' : ''}`}
+    >
+      {type && (type !== "normal" ? (type === "gold" ? "✨" : "💎") : "")}
+    </div>
+  );
+}
 
 export default function BlockBlast() {
   const [gameState, setGameState] = useState<GameState>({
     grid: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)),
+    gridColors: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)),
     availableBlocks: [],
     score: 0,
     gameOver: false,
@@ -63,7 +160,7 @@ export default function BlockBlast() {
     },
   });
 
-  // Genera un nuovo blocco con tipo casuale
+  // Genera un nuovo blocco con tipo e colore casuali
   const generateBlock = (): Block => {
     const randomShape = BLOCK_SHAPES[Math.floor(Math.random() * BLOCK_SHAPES.length)];
     const type: BlockType = Math.random() > 0.95 
@@ -72,7 +169,11 @@ export default function BlockBlast() {
         ? "gold" 
         : "normal";
 
-    return { shape: randomShape, type };
+    const color = type === "normal" 
+      ? BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)]
+      : undefined;
+
+    return { shape: randomShape, type, color };
   };
 
   // Genera 3 nuovi blocchi
@@ -97,35 +198,36 @@ export default function BlockBlast() {
     return true;
   };
 
-  // Posiziona un blocco sulla griglia
-  const placeBlock = (blockIndex: number, row: number, col: number) => {
+  // Gestisce il drop di un blocco
+  const handleDrop = (item: { block: Block; index: number }, row: number, col: number) => {
     if (gameState.gameOver) return;
-
-    const block = gameState.availableBlocks[blockIndex];
-    if (!block || !canPlaceBlock(block, row, col)) return;
+    if (!canPlaceBlock(item.block, row, col)) return;
 
     const newGrid = gameState.grid.map(row => [...row]);
+    const newGridColors = gameState.gridColors.map(row => [...row]);
 
     // Posiziona il blocco
-    for (let i = 0; i < block.shape.length; i++) {
-      for (let j = 0; j < block.shape[i].length; j++) {
-        if (block.shape[i][j]) {
-          newGrid[row + i][col + j] = block.type;
+    for (let i = 0; i < item.block.shape.length; i++) {
+      for (let j = 0; j < item.block.shape[i].length; j++) {
+        if (item.block.shape[i][j]) {
+          newGrid[row + i][col + j] = item.block.type;
+          newGridColors[row + i][col + j] = item.block.color || null;
         }
       }
     }
 
     // Rimuovi il blocco usato
     const newBlocks = [...gameState.availableBlocks];
-    newBlocks.splice(blockIndex, 1);
+    newBlocks.splice(item.index, 1);
 
     setGameState(prev => ({
       ...prev,
       grid: newGrid,
+      gridColors: newGridColors,
       availableBlocks: newBlocks,
     }));
 
-    checkLines(newGrid);
+    checkLines(newGrid, newGridColors);
 
     // Se non ci sono più blocchi disponibili, genera nuovi blocchi
     if (newBlocks.length === 0) {
@@ -133,11 +235,11 @@ export default function BlockBlast() {
     }
 
     // Verifica game over
-    checkGameOver();
+    checkGameOver(newBlocks);
   };
 
   // Verifica e rimuove le linee complete
-  const checkLines = (grid: (BlockType | null)[][]) => {
+  const checkLines = (grid: (BlockType | null)[][], gridColors: (string | null)[][]) => {
     let creditsEarned = 0;
     let gamecoinsEarned = 0;
     let linesCleared = 0;
@@ -153,6 +255,7 @@ export default function BlockBlast() {
 
         // Pulisci la riga
         grid[i].fill(null);
+        gridColors[i].fill(null);
         linesCleared++;
       }
     }
@@ -170,6 +273,7 @@ export default function BlockBlast() {
         // Pulisci la colonna
         for (let i = 0; i < GRID_SIZE; i++) {
           grid[i][j] = null;
+          gridColors[i][j] = null;
         }
         linesCleared++;
       }
@@ -179,6 +283,7 @@ export default function BlockBlast() {
       setGameState(prev => ({
         ...prev,
         grid,
+        gridColors,
         score: prev.score + (linesCleared * 100),
       }));
 
@@ -189,8 +294,8 @@ export default function BlockBlast() {
   };
 
   // Verifica se il gioco è finito
-  const checkGameOver = () => {
-    const canPlaceAnyBlock = gameState.availableBlocks.some(block => {
+  const checkGameOver = (blocks: Block[]) => {
+    const canPlaceAnyBlock = blocks.some(block => {
       for (let i = 0; i < GRID_SIZE; i++) {
         for (let j = 0; j < GRID_SIZE; j++) {
           if (canPlaceBlock(block, i, j)) return true;
@@ -212,6 +317,7 @@ export default function BlockBlast() {
   const initGame = () => {
     setGameState({
       grid: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)),
+      gridColors: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)),
       availableBlocks: [],
       score: 0,
       gameOver: false,
@@ -223,94 +329,54 @@ export default function BlockBlast() {
     initGame();
   }, []);
 
-  const getBlockColor = (type: BlockType | null): string => {
-    switch (type) {
-      case "normal":
-        return "bg-primary/20";
-      case "gold":
-        return "bg-yellow-400/20";
-      case "gamecoin":
-        return "bg-blue-500/20";
-      default:
-        return "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
-    }
-  };
-
-  const getBlockSymbol = (type: BlockType | null): string => {
-    switch (type) {
-      case "normal":
-        return "⬜";
-      case "gold":
-        return "✨";
-      case "gamecoin":
-        return "💎";
-      default:
-        return "";
-    }
-  };
-
   return (
-    <div className="flex flex-col items-center gap-8">
-      <div className="flex justify-between w-full max-w-xl mb-4">
-        <div>
-          <p className="text-lg font-semibold">Punteggio: {gameState.score}</p>
-          <p className="text-sm text-muted-foreground">Blocchi disponibili: {gameState.availableBlocks.length}</p>
-        </div>
-        <Button onClick={initGame}>Nuova Partita</Button>
-      </div>
-
-      {/* Blocchi disponibili */}
-      <div className="flex gap-4 mb-4">
-        {gameState.availableBlocks.map((block, blockIndex) => (
-          <div key={blockIndex} className="p-2 border rounded">
-            <div className="grid grid-flow-row gap-1" style={{ gridTemplateColumns: `repeat(${block.shape[0].length}, 1fr)` }}>
-              {block.shape.map((row, i) => (
-                row.map((cell, j) => (
-                  <div
-                    key={`${i}-${j}`}
-                    className={`w-6 h-6 ${cell ? getBlockColor(block.type) : 'invisible'}`}
-                  >
-                    {cell && getBlockSymbol(block.type)}
-                  </div>
-                ))
-              ))}
-            </div>
+    <DndProvider backend={HTML5Backend}>
+      <div className="flex flex-col items-center gap-8">
+        <div className="flex justify-between w-full max-w-xl mb-4">
+          <div>
+            <p className="text-lg font-semibold">Punteggio: {gameState.score}</p>
+            <p className="text-sm text-muted-foreground">
+              Blocchi disponibili: {gameState.availableBlocks.length}
+            </p>
           </div>
-        ))}
+          <Button onClick={initGame}>Nuova Partita</Button>
+        </div>
+
+        {/* Blocchi disponibili */}
+        <div className="flex gap-4 mb-4">
+          {gameState.availableBlocks.map((block, index) => (
+            <DraggableBlock key={index} block={block} index={index} />
+          ))}
+        </div>
+
+        {/* Griglia di gioco */}
+        <Card className="p-4">
+          <div className="grid grid-cols-10">
+            {gameState.grid.map((row, i) =>
+              row.map((cell, j) => (
+                <DroppableCell
+                  key={`${i}-${j}`}
+                  onDrop={handleDrop}
+                  row={i}
+                  col={j}
+                  type={cell}
+                  color={gameState.gridColors[i][j]}
+                />
+              ))
+            )}
+          </div>
+        </Card>
+
+        {gameState.gameOver && (
+          <div className="text-center">
+            <h3 className="text-xl font-bold mb-2">Game Over!</h3>
+            <p className="text-muted-foreground">Punteggio finale: {gameState.score}</p>
+            <Button onClick={initGame} className="mt-4">
+              Gioca ancora
+            </Button>
+          </div>
+        )}
       </div>
-
-      {/* Griglia di gioco */}
-      <Card className="p-4">
-        <div className="grid grid-cols-10 gap-1">
-          {gameState.grid.map((row, i) =>
-            row.map((cell, j) => (
-              <motion.button
-                key={`${i}-${j}`}
-                className={`w-8 h-8 flex items-center justify-center transition-colors ${getBlockColor(cell)}`}
-                onClick={() => {
-                  if (gameState.availableBlocks.length > 0) {
-                    placeBlock(0, i, j);
-                  }
-                }}
-                whileHover={{ scale: cell === null && !gameState.gameOver ? 1.1 : 1 }}
-                disabled={cell !== null || gameState.gameOver}
-              >
-                {getBlockSymbol(cell)}
-              </motion.button>
-            ))
-          )}
-        </div>
-      </Card>
-
-      {gameState.gameOver && (
-        <div className="text-center">
-          <h3 className="text-xl font-bold mb-2">Game Over!</h3>
-          <p className="text-muted-foreground">Punteggio finale: {gameState.score}</p>
-          <Button onClick={initGame} className="mt-4">
-            Gioca ancora
-          </Button>
-        </div>
-      )}
-    </div>
+    </DndProvider>
   );
 }
