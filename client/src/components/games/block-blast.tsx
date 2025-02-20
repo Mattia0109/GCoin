@@ -64,9 +64,9 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
       className={`p-1 border rounded ${isDragging ? 'opacity-50' : ''}`}
       style={{ cursor: 'move' }}
     >
-      <div 
-        className="grid grid-flow-row" 
-        style={{ 
+      <div
+        className="grid grid-flow-row"
+        style={{
           gridTemplateColumns: `repeat(${block.shape[0].length}, 1fr)`,
         }}
       >
@@ -76,8 +76,8 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
               key={`${i}-${j}`}
               className={`w-6 h-6 flex items-center justify-center ${
                 cell ? (
-                  block.type === "normal" 
-                    ? block.color 
+                  block.type === "normal"
+                    ? block.color
                     : block.type === "gold"
                       ? "bg-yellow-400"
                       : "bg-blue-600"
@@ -93,13 +93,13 @@ function DraggableBlock({ block, index }: { block: Block; index: number }) {
   );
 }
 
-function DroppableCell({ 
-  onDrop, 
-  row, 
-  col, 
-  type, 
+function DroppableCell({
+  onDrop,
+  row,
+  col,
+  type,
   color
-}: { 
+}: {
   onDrop: (item: any, row: number, col: number) => void;
   row: number;
   col: number;
@@ -119,8 +119,8 @@ function DroppableCell({
       ref={drop}
       className={`w-8 h-8 flex items-center justify-center ${
         type ? (
-          type === "normal" 
-            ? color 
+          type === "normal"
+            ? color
             : type === "gold"
               ? "bg-yellow-400"
               : "bg-blue-600"
@@ -163,13 +163,13 @@ export default function BlockBlast() {
   // Genera un nuovo blocco con tipo e colore casuali
   const generateBlock = (): Block => {
     const randomShape = BLOCK_SHAPES[Math.floor(Math.random() * BLOCK_SHAPES.length)];
-    const type: BlockType = Math.random() > 0.95 
-      ? "gamecoin" 
-      : Math.random() > 0.8 
-        ? "gold" 
+    const type: BlockType = Math.random() > 0.95
+      ? "gamecoin"
+      : Math.random() > 0.8
+        ? "gold"
         : "normal";
 
-    const color = type === "normal" 
+    const color = type === "normal"
       ? BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)]
       : undefined;
 
@@ -243,28 +243,35 @@ export default function BlockBlast() {
     let creditsEarned = 0;
     let gamecoinsEarned = 0;
     let linesCleared = 0;
+    let shouldClearLine = false;
+
+    // Crea copie delle griglie per le modifiche
+    const newGrid = grid.map(row => [...row]);
+    const newGridColors = gridColors.map(row => [...row]);
 
     // Controlla righe
     for (let i = 0; i < GRID_SIZE; i++) {
-      if (grid[i].every(cell => cell !== null)) {
-        // Conta le ricompense
-        grid[i].forEach(cell => {
+      shouldClearLine = newGrid[i].every(cell => cell !== null);
+      if (shouldClearLine) {
+        // Conta le ricompense prima di cancellare
+        newGrid[i].forEach(cell => {
           if (cell === "gold") creditsEarned += 5;
           if (cell === "gamecoin") gamecoinsEarned += 1;
         });
 
         // Pulisci la riga
-        grid[i].fill(null);
-        gridColors[i].fill(null);
+        newGrid[i].fill(null);
+        newGridColors[i].fill(null);
         linesCleared++;
       }
     }
 
     // Controlla colonne
     for (let j = 0; j < GRID_SIZE; j++) {
-      const column = grid.map(row => row[j]);
-      if (column.every(cell => cell !== null)) {
-        // Conta le ricompense
+      const column = newGrid.map(row => row[j]);
+      shouldClearLine = column.every(cell => cell !== null);
+      if (shouldClearLine) {
+        // Conta le ricompense prima di cancellare
         column.forEach(cell => {
           if (cell === "gold") creditsEarned += 5;
           if (cell === "gamecoin") gamecoinsEarned += 1;
@@ -272,8 +279,8 @@ export default function BlockBlast() {
 
         // Pulisci la colonna
         for (let i = 0; i < GRID_SIZE; i++) {
-          grid[i][j] = null;
-          gridColors[i][j] = null;
+          newGrid[i][j] = null;
+          newGridColors[i][j] = null;
         }
         linesCleared++;
       }
@@ -282,8 +289,8 @@ export default function BlockBlast() {
     if (linesCleared > 0) {
       setGameState(prev => ({
         ...prev,
-        grid,
-        gridColors,
+        grid: newGrid,
+        gridColors: newGridColors,
         score: prev.score + (linesCleared * 100),
       }));
 

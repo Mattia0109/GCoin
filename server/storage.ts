@@ -34,15 +34,45 @@ export class MemStorage implements IStorage {
   }
 
   private generateCollectibles() {
-    // Generate some initial collectibles
-    for (let i = 0; i < 50; i++) {
-      this.collectibles.push({
-        type: Math.random() > 0.9 ? "gamecoin" : "credit",
-        amount: Math.random() > 0.9 ? 1 : Math.floor(Math.random() * 5) + 1,
-        latitude: 40 + Math.random() * 10,
-        longitude: -100 + Math.random() * 50,
-      });
-    }
+    // Coordinate approssimative di alcune città principali del mondo con la loro popolazione
+    const majorCities = [
+      { lat: 41.9028, lng: 12.4964, population: 4.3e6 }, // Roma
+      { lat: 45.4642, lng: 9.1900, population: 1.3e6 },  // Milano
+      { lat: 40.8518, lng: 14.2681, population: 3.1e6 }, // Napoli
+      { lat: 48.8566, lng: 2.3522, population: 2.1e6 },  // Parigi
+      { lat: 51.5074, lng: -0.1278, population: 8.9e6 }, // Londra
+      { lat: 40.7128, lng: -74.0060, population: 8.4e6 }, // New York
+      { lat: 35.6762, lng: 139.6503, population: 9.3e6 }, // Tokyo
+      // Aggiungi altre città principali qui
+    ];
+
+    // Svuota l'array dei collectibles esistenti
+    this.collectibles = [];
+
+    // Genera collectibles basati sulla popolazione delle città
+    majorCities.forEach(city => {
+      // Calcola il numero di collectibles basato sulla popolazione
+      // 1 collectible ogni 100,000 abitanti, con un minimo di 3 e un massimo di 20
+      const numCollectibles = Math.min(20, Math.max(3, Math.floor(city.population / 100000)));
+
+      for (let i = 0; i < numCollectibles; i++) {
+        // Genera coordinate casuali intorno alla città (raggio di circa 5km)
+        const radius = 0.05; // approssimativamente 5km
+        const randomLat = city.lat + (Math.random() - 0.5) * radius;
+        const randomLng = city.lng + (Math.random() - 0.5) * radius;
+
+        // Più popolazione = più probabilità di GameCoin
+        const isGameCoin = Math.random() < (city.population / 1e7); // max 10%
+
+        this.collectibles.push({
+          type: isGameCoin ? "gamecoin" : "credit",
+          // Più popolazione = più crediti
+          amount: isGameCoin ? 1 : Math.floor(Math.random() * (city.population / 1e6)) + 1,
+          latitude: randomLat,
+          longitude: randomLng,
+        });
+      }
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
